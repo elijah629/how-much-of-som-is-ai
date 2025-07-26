@@ -8,11 +8,11 @@ anyhow = "1.0.98"
 bincode = { version = "2.0.1", features = ["serde"] }
 dotenvy = { git = "https://github.com/allan2/dotenvy", branch = "main" }
 emojis = "0.7.0"
-# embed_anything = { version = "0.6.4", features = ["cuda"] }
+embed_anything = { version = "0.6.4", features = ["cuda"] }
 
 futures = "0.3.31"
-linfa = "0.7.1"
-linfa-clustering = "0.7.1"
+linfa = { version = "0.7.1", features = ["serde"] }
+linfa-clustering = { version = "0.7.1", features = ["serde"] }
 ndarray = "0.15.6"
 once_cell = "1.21.3"
 
@@ -27,3 +27,6 @@ tokio = { version = "1.46.1", features = ["full"] }
 
 unic-emoji-char = "0.9.0"
 unicode-segmentation = "1.12.0"
+
+linfa-nn = "0.7.2"
+linfa-preprocessing = "0.7.1"

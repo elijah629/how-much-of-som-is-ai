@@ -52,20 +52,6 @@
             ncurses5
             stdenv.cc
             binutils
-
-            pkg-config
-            openssl
-
-            python312Packages.transformers
-            python312Packages.tokenizers
-            python312Packages.pytorch
-
-            # optimum[exporters]
-            python312Packages.optimum
-            python312Packages.onnx
-            python312Packages.onnxruntime
-            python312Packages.protobuf
-            python312Packages.accelerate
           ];
 
           shellHook = ''

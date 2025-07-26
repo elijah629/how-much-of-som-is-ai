@@ -1,20 +1,8 @@
-use once_cell::sync::Lazy;
 use pulldown_cmark::Event;
 use pulldown_cmark::Parser;
 use regex::Regex;
 use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
-
-static STOPWORDS: Lazy<HashMap<&'static str, ()>> = Lazy::new(|| {
-    [
-        "the", "and", "is", "in", "it", "to", "of", "a", "that", "i", "was", "he", "for", "you",
-        "with", "on", "as", "have", "but", "be",
-    ]
-    .iter()
-    .copied()
-    .map(|w| (w, ()))
-    .collect()
-});
 
 #[derive(Debug)]
 pub struct TextMetrics {
@@ -28,21 +16,18 @@ pub struct TextMetrics {
     pub ellipsis_rate: f64,            // Ellipses / sentences
     pub markdown_use: f64,             // markdown syntax present
 
-    pub type_token_ratio: f64,       // unique words / total words
-    pub hapax_legomena_rate: f64,    // words occurring once / total words
     pub avg_syllables_per_word: f64, // total syllables / total words
     pub flesch_reading_ease: f64,    // 206.835 – 1.015*(words/sentences) – 84.6*(syllables/words)
     pub flesch_kincaid_grade: f64,   // 0.39*(words/sentences) + 11.8*(syllables/words) – 15.59
-    pub stopword_rate: f64,          // stopwords / total words
     pub uppercase_word_rate: f64,    // ALL-CAPS words / total words
     pub digit_rate: f64,             // words containing digits / total words
-    pub url_email_rate: f64,         // words matching URL/email regex / total words
-    pub passive_voice_rate: f64,     // be‑verbs + past participle per sentence
     pub sentence_length_stddev: f64, // stdev of words per sentence
+
+                                     // pub embeddings: Vec<f32>,
 }
 
 impl TextMetrics {
-    pub fn calculate(text: &str) -> Self {
+    pub fn calculate(text: &str /*, embeddings: Vec<f32>*/) -> Self {
         // existing markdown vs non-markdown
         let (markdown, not_md) = Parser::new(text).fold((0usize, 0usize), |(md, non_md), event| {
             if matches!(
@@ -88,8 +73,6 @@ impl TextMetrics {
                 .to_lowercase();
             *freqs.entry(w_lower).or_insert(0usize) += 1;
         }
-        let unique_words = freqs.len();
-        let hapaxes = freqs.values().filter(|&&c| c == 1).count();
 
         // syllable estimate: vowel groups per word
         let vowel_re = Regex::new(r"[aeiouyAEIOUY]+").unwrap();
@@ -98,31 +81,20 @@ impl TextMetrics {
             .map(|w| vowel_re.find_iter(w).count().max(1))
             .sum();
 
-        // stopwords, uppercase, digits, URLs/emails
-        let url_email_re = Regex::new(r"^(https?://\S+|\S+@\S+\.\S+)$").unwrap();
-        let mut stopword_count = 0;
+        // stopwords, uppercase, digits
         let mut uppercase_count = 0;
         let mut digit_count = 0;
-        let mut url_email_count = 0;
         for w in &words {
             let w_clean = w.trim_matches(|c: char| !c.is_alphanumeric());
-            if STOPWORDS.contains_key(&w_clean.to_lowercase().as_str()) {
-                stopword_count += 1;
-            }
             if w_clean.chars().all(|c| c.is_uppercase()) && w_clean.len() > 1 {
                 uppercase_count += 1;
             }
             if w_clean.chars().any(|c| c.is_ascii_digit()) {
                 digit_count += 1;
             }
-            if url_email_re.is_match(w) {
-                url_email_count += 1;
-            }
         }
 
         // passive voice (rough): look for "was|were|is|are|be|been|being" + word ending in "ed"
-        let passive_re = Regex::new(r"\b(was|were|is|are|be|been|being)\s+\w+ed\b").unwrap();
-        let passive_matches = passive_re.find_iter(text).count();
 
         // sentence length standard deviation
         let mean_sl = sentence_word_counts.iter().sum::<usize>() as f64 / sentence_count as f64;
@@ -181,17 +153,13 @@ impl TextMetrics {
             ellipsis_rate: ell_count as f64 / sc,
             markdown_use: markdown as f64 / not_md.max(1) as f64,
 
-            type_token_ratio: unique_words as f64 / wc,
-            hapax_legomena_rate: hapaxes as f64 / wc,
             avg_syllables_per_word: syl / wc,
             flesch_reading_ease,
             flesch_kincaid_grade,
-            stopword_rate: stopword_count as f64 / wc,
             uppercase_word_rate: uppercase_count as f64 / wc,
             digit_rate: digit_count as f64 / wc,
-            url_email_rate: url_email_count as f64 / wc,
-            passive_voice_rate: passive_matches as f64 / sc,
             sentence_length_stddev: stddev_sl,
+            // embeddings,
         }
     }
 }
