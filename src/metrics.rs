@@ -1,6 +1,5 @@
 use pulldown_cmark::Event;
 use pulldown_cmark::Parser;
-use regex::Regex;
 use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -23,7 +22,8 @@ pub struct TextMetrics {
     pub digit_rate: f64,             // words containing digits / total words
     pub sentence_length_stddev: f64, // stdev of words per sentence
 
-                                     // pub embeddings: Vec<f32>,
+    pub rule_of_threes: f64, // 100 if contains "not just"
+                             // pub embeddings: Vec<f32>,
 }
 
 impl TextMetrics {
@@ -75,11 +75,7 @@ impl TextMetrics {
         }
 
         // syllable estimate: vowel groups per word
-        let vowel_re = Regex::new(r"[aeiouyAEIOUY]+").unwrap();
-        let total_syllables: usize = words
-            .iter()
-            .map(|w| vowel_re.find_iter(w).count().max(1))
-            .sum();
+        let total_syllables: usize = words.iter().map(|w| count_syllables(w)).sum();
 
         // stopwords, uppercase, digits
         let mut uppercase_count = 0;
@@ -93,6 +89,8 @@ impl TextMetrics {
                 digit_count += 1;
             }
         }
+
+        let rule_of_threes = (text.matches("not just").count() * 100) as f64;
 
         // passive voice (rough): look for "was|were|is|are|be|been|being" + word ending in "ed"
 
@@ -159,7 +157,24 @@ impl TextMetrics {
             uppercase_word_rate: uppercase_count as f64 / wc,
             digit_rate: digit_count as f64 / wc,
             sentence_length_stddev: stddev_sl,
-            // embeddings,
+            rule_of_threes, // embeddings,
         }
     }
+}
+
+/// if you know anything about me, wasm, and syllables. NOT THIS SHIT AGAIN :heavysob:
+fn count_syllables(word: &str) -> usize {
+    let vowels = "aeiouyAEIOUY";
+    let mut prev_was_vowel = false;
+    let mut syllables = 0;
+
+    for ch in word.chars() {
+        let is_vowel = vowels.contains(ch);
+        if is_vowel && !prev_was_vowel {
+            syllables += 1;
+        }
+        prev_was_vowel = is_vowel;
+    }
+
+    syllables.max(1)
 }

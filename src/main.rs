@@ -9,18 +9,12 @@ use ndarray::{Array1, Array2};
 use tokio::fs;
 
 use crate::metrics::TextMetrics;
-use crate::runner::predict;
 
 mod devlogs;
 mod metrics;
-mod runner;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    //predict().await?;
-
-    //return Ok(());
-
     let config = standard();
 
     println!("Fetching devlogs");
@@ -111,7 +105,7 @@ async fn main() -> anyhow::Result<()> {
 
     println!("KMeans calculation");
     let n_samples = data.len();
-    let n_features = 14; // + 384;
+    let n_features = 15; // + 384;
 
     let mut array = Array2::<f64>::zeros((n_samples, n_features));
 
@@ -131,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
         array[[i, 11]] = sample.uppercase_word_rate;
         array[[i, 12]] = sample.digit_rate;
         array[[i, 13]] = sample.sentence_length_stddev;
+        array[[i, 14]] = sample.rule_of_threes;
 
         //for (j, embedding) in sample.embeddings.iter().enumerate() {
         //    array[[i, j + 14]] = *embedding as f64;
