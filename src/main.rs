@@ -132,7 +132,7 @@ async fn main() -> anyhow::Result<()> {
         //}
     }
     println!("Normalizing dataset");
-    let scaler = NormScaler::l1();
+    let scaler = NormScaler::l2();
     let array = scaler.transform(array);
 
     println!("Building dataset");

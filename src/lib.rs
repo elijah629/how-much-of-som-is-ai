@@ -43,7 +43,7 @@ pub fn predict(devlog: &str) -> bool {
     array[[0, 13]] = sample.sentence_length_stddev;
     array[[0, 14]] = sample.rule_of_threes;
 
-    let scaler = NormScaler::l1();
+    let scaler = NormScaler::l2();
     let array = scaler.transform(array);
 
     let prediction = model.predict(&array);
