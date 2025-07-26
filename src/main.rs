@@ -17,9 +17,9 @@ mod runner;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    predict().await?;
+    //predict().await?;
 
-    return Ok(());
+    //return Ok(());
 
     let config = standard();
 
