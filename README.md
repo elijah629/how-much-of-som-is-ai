@@ -1,6 +1,6 @@
 # how much of som is ai?
 
-I trained a 255 byte AI Detection KMeans model on every SoM devlog. Here's how
+I trained a 271 byte AI Detection KMeans model on every SoM devlog. Here's how
 it went!
 
 ## How this version works
@@ -52,10 +52,15 @@ pub struct TextMetrics {
 
 I then pipe them all into a KMeans model, train it a few (10 billion) times.
 
+## DIY
+
+Place `JOURNEY=` in `.env` to fetch devlogs, or use the provided `devlogs.data`
+file.
+
 ## WASM
 
 For demo purposes, this crate has been ported to WASM and a static site where
-you can run the AI detection model on your own text. Compile the demo wasm it
+you can run the AI detection model on your own text. Compile the wasm demo
 yourself with:
 
 ```sh
