@@ -2,330 +2,107 @@ use bincode::config::standard;
 
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use linfa::Dataset;
-use linfa::traits::{Fit, Predict, Transformer};
+use linfa::traits::{Fit, Predict};
 use linfa_clustering::KMeans;
-use linfa_preprocessing::norm_scaling::NormScaler;
 use ndarray::{Array1, Array2};
 use tokio::fs;
 
 use crate::metrics::TextMetrics;
+use crate::model::features_from_metrics;
+use crate::summer_of_making::fetch_all;
 
-mod devlogs;
 mod metrics;
+mod model;
+mod summer_of_making;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = standard();
 
-    println!("Fetching devlogs");
-    let devlogs: Vec<String> = if fs::try_exists("devlogs.data").await? {
-        let data = fs::read("devlogs.data").await?;
+    println!("Fetching projects + devlogs");
+
+    let data: Vec<String> = if fs::try_exists("som.data").await? {
+        let data = fs::read("som.data").await?;
         let result: Vec<String> = decode_from_slice(&data, config)?.0;
 
         result
     } else {
         let env_map = dotenvy::EnvLoader::new().load()?;
+        let logs = fetch_all(&env_map.var("JOURNEY")?).await?;
 
-        let logs = devlogs::get_all_devlogs(env_map.var("JOURNEY")?).await?;
-
-        fs::write("devlogs.data", encode_to_vec(&logs, config)?).await?;
+        fs::write("som.data", encode_to_vec(&logs, config)?).await?;
 
         logs
     };
 
-    println!("Calculating embeddings");
-    /*let embeddings = if fs::try_exists("embeddings.data").await? {
-        let data = fs::read("embeddings.data").await?;
-        let result: Vec<Vec<f32>> = decode_from_slice(&data, config)?.0;
-
-        result
-    } else {
-        let embedder = TextEmbedder::from_pretrained_hf(
-            "Bert",
-            "sentence-transformers/all-MiniLM-L12-v2",
-            None,
-            None,
-            None,
-        )?;
-
-        let mut embeddings = Vec::with_capacity(devlogs.len());
-
-        let chunks = devlogs.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
-        let chunks = chunks.as_slice();
-
-        /*let chunks = chunks.chunks(4);
-
-        let total_chunks = chunks.len();
-
-        for (i, devlogs) in chunks.enumerate() {
-            println!(
-                "Embedding {}/{} {}%",
-                i + 1,
-                total_chunks,
-                (i + 1) * 100 / total_chunks
-            );
-
-            let results = embedder.embed(devlogs, Some(devlogs.len()), None).await?;
-
-            let vectors = results
-                .iter()
-                .map(|e| e.to_dense())
-                .collect::<Result<Vec<_>, _>>()?;
-
-            embeddings.extend(vectors);
-        }*/
-
-        println!("BEGIN > CUDA COMPUTE");
-        let results = embedder.embed(chunks, Some(4), None).await?;
-        println!("END > CUDA COMPUTE (processed all!)");
-
-        let vectors = results
-            .iter()
-            .map(|e| e.to_dense())
-            .collect::<Result<Vec<_>, _>>()?;
-
-        embeddings.extend(vectors);
-
-        fs::write(
-            "embeddings.data",
-            bincode::encode_to_vec(&embeddings, config)?,
-        )
-        .await?;
-
-        embeddings
-    };*/
-
-    println!("Zipping metrics and embeddings");
-    let data: Vec<TextMetrics> = devlogs
-        .iter()
-        //.zip(embeddings)
-        //.map(|(text, embeddings)| TextMetrics::calculate(text, embeddings))
-        .map(|x| TextMetrics::calculate(x))
-        .collect();
-
-    println!("KMeans calculation");
-    let n_samples = data.len();
-    let n_features = 15; // + 384;
-
-    let mut array = Array2::<f64>::zeros((n_samples, n_features));
-
-    println!("Combining datasets, building feature matricies");
-    for (i, sample) in data.iter().enumerate() {
-        array[[i, 0]] = sample.emoji_rate;
-        array[[i, 1]] = sample.irregular_quotation_rate;
-        array[[i, 2]] = sample.irregular_dash_rate;
-        array[[i, 3]] = sample.avg_sentence_length;
-        array[[i, 4]] = sample.avg_word_length;
-        array[[i, 5]] = sample.punctuation_rate;
-        array[[i, 6]] = sample.ellipsis_rate;
-        array[[i, 7]] = sample.markdown_use;
-        array[[i, 8]] = sample.avg_syllables_per_word;
-        array[[i, 9]] = sample.flesch_reading_ease;
-        array[[i, 10]] = sample.flesch_kincaid_grade;
-        array[[i, 11]] = sample.uppercase_word_rate;
-        array[[i, 12]] = sample.digit_rate;
-        array[[i, 13]] = sample.sentence_length_stddev;
-        array[[i, 14]] = sample.rule_of_threes;
-
-        //for (j, embedding) in sample.embeddings.iter().enumerate() {
-        //    array[[i, j + 14]] = *embedding as f64;
-        //}
-    }
-    println!("Normalizing dataset");
-    let scaler = NormScaler::l2();
-    let array = scaler.transform(array);
+    println!("Calculating metrics");
+    let metrics: Vec<TextMetrics> = data.iter().map(|x| TextMetrics::calculate(x)).collect();
+    let metrics_refs: Vec<&TextMetrics> = metrics.iter().collect();
+    let features = features_from_metrics(&metrics_refs);
 
     println!("Building dataset");
-    let dataset = Dataset::new(array.clone(), Array2::<f32>::zeros((n_samples, 0)));
+    let dataset = Dataset::new(features.clone(), Array2::<f32>::zeros((metrics.len(), 0)));
 
-    println!("train");
-    let model: KMeans<f64, linfa_nn::distance::L2Dist> =
-        KMeans::params(2).max_n_iterations(1000).fit(&dataset)?;
+    println!("Training");
+    let model: KMeans<f64, linfa_nn::distance::L2Dist> = KMeans::params(2)
+        .max_n_iterations(1000)
+        .tolerance(1e-18)
+        .n_runs(10)
+        .fit(&dataset)?;
 
     fs::write("model.kmeans", encode_to_vec(&model, config)?).await?;
 
     println!("Predicting");
-    let predicted: Array1<usize> = model.predict(&array);
+    let predicted: Array1<usize> = model.predict(&features);
 
-    let mut emoji_sums = [0.0f64; 2];
-    let mut counts = [0usize; 2];
-
-    for (datum, label) in data.iter().zip(predicted.iter()) {
-        emoji_sums[*label] += datum.emoji_rate;
-        counts[*label] += 1;
-    }
+    let (emoji_sums, counts) = metrics.iter().zip(predicted.iter()).fold(
+        ([0.0f64; 2], [0usize; 2]),
+        |(mut current_emoji_sums, mut current_counts), (metric, &label)| {
+            current_emoji_sums[label] += metric.emoji_rate;
+            current_counts[label] += 1;
+            (current_emoji_sums, current_counts)
+        },
+    );
 
     let avg_emoji = [
-        emoji_sums[0] / counts[0].max(1) as f64,
-        emoji_sums[1] / counts[1].max(1) as f64,
+        emoji_sums[0] / (counts[0].max(1) as f64),
+        emoji_sums[1] / (counts[1].max(1) as f64),
     ];
 
-    // Step 2: Determine which label is AI (higher avg emoji_rate)
     let ai_label = if avg_emoji[0] > avg_emoji[1] { 0 } else { 1 };
+    let human_label = if avg_emoji[0] > avg_emoji[1] { 1 } else { 0 };
 
-    println!("{ai_label}");
+    fs::write("model.ai.cluster", [ai_label as u8]).await?;
 
-    let human = data
-        .iter()
-        .zip(predicted.iter())
-        .filter(|(_, label)| **label != ai_label)
-        .count();
+    println!("AI Cluster for model revision = {ai_label}");
 
-    let ai = data
-        .iter()
-        .zip(predicted.iter())
-        .filter(|(_, label)| **label == ai_label)
-        .count();
+    let cluster_counts: [usize; 2] = predicted.iter().fold([0, 0], |mut counts, &label| {
+        counts[label] += 1;
+        counts
+    });
 
+    let ai = cluster_counts[ai_label];
+    let human = cluster_counts[human_label];
     let total = ai + human;
 
-    println!("Done!");
     println!(
         "human={human}, ai={ai}, human%={}, ai%={}",
         human * 100 / total,
         ai * 100 / total
-    ); /*let mut rng = rng();
-    
+    );
 
-    // Collect filtered items into a Vec
-    let mut examples: Vec<_> = data
-    .iter()
-    .zip(predicted.iter())
-    .filter(|(_, label)| **label == cluster_id)
-    .collect();
-
-    // Shuffle in place
-    examples.shuffle(&mut rng);
-
-    // Take up to 10 examples and print them
-    for ((text, sample), _) in examples.into_iter().take(10) {
-    println!("  - {text}\n  {sample:?}");
-    }
-    println!();*/
-
-    //println!("{cm:?}");
-    //println!("accuracy {}, MCC {}", cm.accuracy(), cm.mcc());
-
-    /*.map(|x| {
-        let metrics = TextMetrics::calculate(x.as_str());
-
-        (x, metrics)
-    });*/
-
-    /*for (devlog, metric) in metrics {
-        if metric.markdown_use {
-            println!("{devlog:?}");
+    let mut count = 0;
+    let mut other = 0;
+    for ((label, metrics), devlog) in predicted.into_iter().zip(metrics).zip(data).skip(7000) {
+        if label == 0 && count != 2 {
+            count += 1;
+        } else if label == 1 && other != 2 {
+            other += 1;
+        } else if (label == 0 && count == 2) || label == 1 && other == 2 {
+            continue;
         }
-    }*/
-
-    /*let (train, valid) = linfa_datasets::winequality()
-        .map_targets(|x| if *x > 6 { "good" } else { "bad" })
-        .split_with_ratio(0.9);
-
-    let model = GaussianNb::params().fit(&train)?;
-
-    // Predict the validation dataset
-    let pred = model.predict(&valid);
-
-    // Construct confusion matrix
-    let cm = pred.confusion_matrix(&valid)?;
-
-    println!("{cm:?}");
-    println!("accuracy {}, MCC {}", cm.accuracy(), cm.mcc());*/
-
-    /*)let config = standard();
-
-    let devlogs: Vec<String> = if fs::try_exists("devlogs.data").await? {
-        let data = fs::read("devlogs.data").await?;
-        let result: Vec<String> = bincode::decode_from_slice(&data, config)?.0;
-
-        result
-    } else {
-        let logs = devlogs::get_all_devlogs().await?;
-
-        fs::write("devlogs.data", bincode::encode_to_vec(&logs, config)?).await?;
-
-        logs
-    };
-
-    let devlog_count = devlogs.len();
-    println!("Total devlogs: {devlog_count}");
-
-    let embedder = TextEmbedder::from_pretrained_hf(
-        "Bert",
-        "sentence-transformers/all-MiniLM-L6-v2",
-        None,
-        None,
-        None,
-    )?;
-
-    let embeddings = if fs::try_exists("embeddings.data").await? {
-        let data = fs::read("embeddings.data").await?;
-        let result: Vec<Vec<f32>> = bincode::decode_from_slice(&data, config)?.0;
-
-        result
-    } else {
-        let mut embeddings = Vec::with_capacity(devlogs.len());
-
-        let chunks = devlogs.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
-
-        let chunks = chunks.as_slice();
-
-        /*let chunks = chunks.chunks(4);
-
-        let total_chunks = chunks.len();
-
-        for (i, devlogs) in chunks.enumerate() {
-            println!(
-                "Embedding {}/{} {}%",
-                i + 1,
-                total_chunks,
-                (i + 1) * 100 / total_chunks
-            );
-
-            let results = embedder.embed(devlogs, Some(devlogs.len()), None).await?;
-
-            let vectors = results
-                .iter()
-                .map(|e| e.to_dense())
-                .collect::<Result<Vec<_>, _>>()?;
-
-            embeddings.extend(vectors);
-        }*/
-
-        let results = embedder.embed(chunks, Some(4), None).await?;
-
-        let vectors = results
-            .iter()
-            .map(|e| e.to_dense())
-            .collect::<Result<Vec<_>, _>>()?;
-
-        embeddings.extend(vectors);
-
-        fs::write(
-            "embeddings.data",
-            bincode::encode_to_vec(&embeddings, config)?,
-        )
-        .await?;
-
-        embeddings
-    };
-
-    let query = "Added MD5-based diffing to improve file sync accuracy";
-    let query_embed = embedder.embed(&[query], None, None).await?[0].to_dense()?;
-
-    let mut sims: Vec<(usize, f32)> = embeddings
-        .iter()
-        .enumerate()
-        .map(|(i, v)| (i, cosine_similarity(&query_embed, v)))
-        .collect();
-
-    sims.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-
-    println!("Top matches for query '{query}':");
-    for (idx, score) in sims.iter().take(10) {
-        println!("[Score: {:.4}] {}", score, devlogs[*idx]);
-    }*/
+        println!("--{label}--\n {devlog}\n{metrics:?}");
+    }
 
     Ok(())
 }

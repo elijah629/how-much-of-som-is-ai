@@ -1,52 +1,69 @@
 mod metrics;
+mod model;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-static MODEL_BYTES: &[u8] = include_bytes!("../model.kmeans");
+use once_cell::sync::Lazy;
+
+#[cfg(target_arch = "wasm32")]
+static MODEL: Lazy<linfa_clustering::KMeans<f64, linfa_nn::distance::L2Dist>> = Lazy::new(|| {
+    let config = bincode::config::standard();
+    bincode::serde::decode_from_slice(include_bytes!("../model.kmeans"), config)
+        .unwrap()
+        .0
+});
+
+#[cfg(target_arch = "wasm32")]
+static AI_CLUSTER: usize = include_bytes!("../model.ai.cluster")[0] as usize;
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, serde::Serialize)]
+struct Output {
+    percent_ai: f64,
+    percent_human: f64,
+    ai: bool,
+    metrics: crate::metrics::TextMetrics,
+}
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub fn predict(devlog: &str) -> bool {
-    use crate::metrics::TextMetrics;
+pub fn predict(devlog: &str) -> JsValue {
+    use crate::{
+        metrics::TextMetrics,
+        model::{features_from_metrics, point_confidence},
+    };
     use linfa::traits::{Predict, Transformer};
-    use linfa_clustering::KMeans;
     use linfa_preprocessing::norm_scaling::NormScaler;
     use ndarray::Array2;
 
-    let config = bincode::config::standard();
-    let model: KMeans<f64, linfa_nn::distance::L2Dist> =
-        bincode::serde::decode_from_slice(MODEL_BYTES, config)
-            .unwrap()
-            .0;
+    let model = &*MODEL;
 
     let sample = TextMetrics::calculate(devlog);
+    let features = features_from_metrics(&[&sample]);
+    let features = features.row(0);
 
-    let n_features = 15;
+    let (distances, sims) = point_confidence(model, features);
 
-    let mut array = Array2::<f64>::zeros((1, n_features));
+    let predicted = sims
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+        .map(|(idx, _)| idx)
+        .unwrap_or(0);
 
-    array[[0, 0]] = sample.emoji_rate;
-    array[[0, 1]] = sample.irregular_quotation_rate;
-    array[[0, 2]] = sample.irregular_dash_rate;
-    array[[0, 3]] = sample.avg_sentence_length;
-    array[[0, 4]] = sample.avg_word_length;
-    array[[0, 5]] = sample.punctuation_rate;
-    array[[0, 6]] = sample.ellipsis_rate;
-    array[[0, 7]] = sample.markdown_use;
-    array[[0, 8]] = sample.avg_syllables_per_word;
-    array[[0, 9]] = sample.flesch_reading_ease;
-    array[[0, 10]] = sample.flesch_kincaid_grade;
-    array[[0, 11]] = sample.uppercase_word_rate;
-    array[[0, 12]] = sample.digit_rate;
-    array[[0, 13]] = sample.sentence_length_stddev;
-    array[[0, 14]] = sample.rule_of_threes;
+    // normalize sims → percentages
+    let percent_human = sims.get(AI_CLUSTER).cloned().unwrap_or(0.0) * 100.0;
+    let percent_ai = 100.0 - percent_human;
 
-    let scaler = NormScaler::l2();
-    let array = scaler.transform(array);
+    let prediction = model.predict(&features);
 
-    let prediction = model.predict(&array);
-
-    prediction[0] == 0 // 0 means ai, 1 means human
+    serde_wasm_bindgen::to_value(&Output {
+        metrics: sample,
+        ai: prediction == AI_CLUSTER,
+        percent_ai,
+        percent_human,
+    })
+    .unwrap()
 }

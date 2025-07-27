@@ -26,24 +26,25 @@
     <main class="max-w-5xl mx-auto p-6 space-y-8">
       <section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <h2 class="text-2xl font-medium mb-4">
-          Stats as of <span class="font-semibold">July 26, 2025</span>:
+          Projects + Devlog stats as of
+          <span class="font-semibold">July 26, 2025</span>:
         </h2>
         <div class="flex flex-wrap gap-4 text-lg">
           <div class="flex items-center space-x-2">
             <span class="font-semibold">Human:</span>
-            <span class="text-green-600 dark:text-green-400">19,847</span>
+            <span class="text-green-600 dark:text-green-400">30,307</span>
           </div>
           <div class="flex items-center space-x-2">
             <span class="font-semibold">AI:</span>
-            <span class="text-blue-600 dark:text-blue-400">3,160</span>
+            <span class="text-blue-600 dark:text-blue-400">286</span>
           </div>
           <div class="flex items-center space-x-2">
             <span class="font-semibold">Human %:</span>
-            <span class="text-green-600 dark:text-green-400">86%</span>
+            <span class="text-green-600 dark:text-green-400">99%</span>
           </div>
           <div class="flex items-center space-x-2">
             <span class="font-semibold">AI %:</span>
-            <span class="text-blue-600 dark:text-blue-400">13%</span>
+            <span class="text-blue-600 dark:text-blue-400">1%</span>
           </div>
         </div>
       </section>
@@ -53,13 +54,13 @@
         <div class="flex flex-col md:flex-row gap-4">
           <textarea
             id="input"
-            class="flex-1 resize-y min-h-[200px] p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 scrollbar-hide"
+            class="flex-1 resize-y grow min-h-[200px] p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 scrollbar-hide"
             placeholder="Type here, AI checks live (MODEL IS FAST)"
           ></textarea>
-          <div
+          <pre
             id="output"
-            class="w-full md:w-1/3 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 min-h-[200px]"
-          ></div>
+            class="w-min p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 min-h-[200px]"
+          ></pre>
         </div>
       </section>
     </main>

@@ -2,11 +2,16 @@ import { predict } from "./pkg/how_much_of_som_is_ai";
 import './style.css'
 
 const $input = document.getElementById("input") as HTMLTextAreaElement;
-const $output = document.getElementById("output") as HTMLSpanElement;
+const $output = document.getElementById("output") as HTMLPreElement;
 
 $input.addEventListener("input", () => {
   const input = $input.value;
-  const prediction = predict(input);
+  const { percent_human, percent_ai, ai, metrics } = predict(input);
 
-  $output.innerText = prediction ? "Text is AI" : "Text is not AI";
+  $output.innerText = `AI = ${percent_human}%
+Human = ${percent_ai}%
+
+Text is ${ai ? "AI" : "Human"}
+
+${JSON.stringify(metrics, (_, x) => x, 4)}`;
 });
