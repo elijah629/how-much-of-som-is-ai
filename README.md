@@ -30,23 +30,22 @@ algorithim to classify the text into two unlabeled clusters based off of a
 feature matrix. I calculate these features:
 
 ```rust
+#[derive(Debug, Serialize)]
 pub struct TextMetrics {
     // higher = more AI-like
-    pub emoji_rate: f64,               // Emoji / words
-    pub irregular_quotation_rate: f64, // Fancy quotation marks / total quotation marks
-    pub irregular_dash_rate: f64,      // Em-dashes / total dashes
-    pub avg_sentence_length: f64,      // Words / sentences
-    pub avg_word_length: f64,          // Characters / words
-    pub punctuation_rate: f64,         // Punctuation marks / words
-    pub ellipsis_rate: f64,            // Ellipses / sentences
-    pub markdown_use: f64,             // markdown syntax present
 
-    pub avg_syllables_per_word: f64, // total syllables / total words
-    pub flesch_reading_ease: f64,    // 206.835 – 1.015*(words/sentences) – 84.6*(syllables/words)
-    pub flesch_kincaid_grade: f64,   // 0.39*(words/sentences) + 11.8*(syllables/words) – 15.59
-    pub uppercase_word_rate: f64,    // ALL-CAPS words / total words
-    pub digit_rate: f64,             // words containing digits / total words
-    pub sentence_length_stddev: f64, // stdev of words per sentence
+    // Rates
+    pub emoji_rate: f64,     // Emoji * 2 / words
+    pub buzzword_ratio: f64, // Buzzwords * 2 / words
+    pub markdown_use: f64,   // ai-like markdown syntax present
+
+    // Counts
+    pub irregular_ellipsis: f64,   // bad ellipses (unicode ...)
+    pub rule_of_threes: f64,       // It's not just _, it's _ (i know this rule is not 3, but two)
+    pub devlog_day_count: f64,     // /(dev(-)?log|day)( \D+)?/gi
+    pub html_escapes: f64,         // &amp; etc
+    pub irregular_quotations: f64, // Fancy quotation marks / total quotation marks
+    pub irregular_dashes: f64,     // Em-dashes / total dashes
 }
 ```
 
@@ -54,7 +53,7 @@ I then pipe them all into a KMeans model, train it a few (10 billion) times.
 
 ## DIY
 
-Place `JOURNEY=` in `.env` to fetch devlogs, or use the provided `devlogs.data`
+Place `JOURNEY=` in `.env` to fetch devlogs & projects, or use the provided `som.data`
 file.
 
 ## WASM
