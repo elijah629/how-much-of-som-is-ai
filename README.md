@@ -1,11 +1,11 @@
 # how much of som is ai?
 
-I trained a ~~271~~ ~~250~~ 207 ✔️ byte AI Detection KMeans model on every SoM
-devlog. Here's how it went!
+I trained a ~~271~~ ~~250~~ 207 ✔️ byte 11 parameter AI Detection KMeans model
+on every SoM devlog. Here's how it went!
 
 ## How this version works
 
-### Training
+### Functional Training
 
 - Get every devlog from SoM api
 - Calculate text features
@@ -13,7 +13,7 @@ devlog. Here's how it went!
 - Export model
 - Meause the model against its own training data to see how much of SoM is AI.
 
-### Inference
+### Functional Inference
 
 - Load the previously exported model
 - Compute text features
@@ -30,40 +30,95 @@ algorithim to classify the text into two unlabeled clusters based off of a
 feature matrix. I calculate these features:
 
 ```rust
-#[derive(Debug, Serialize)]
-pub struct TextMetrics {
+struct TextMetrics {
     // higher = more AI-like
+    pub emoji_rate: f64, // Emoji / sentences
 
-    // Rates
-    pub emoji_rate: f64,     // Emoji * 2 / words
-    pub buzzword_ratio: f64, // Buzzwords * 2 / words
-    pub markdown_use: f64,   // ai-like markdown syntax present
+    pub not_just_count: f64,    // It's not just _, it's _
+    pub buzzword_count: f64,    // Buzzwords * 2 / words
+    pub html_escape_count: f64, // &amp;
+    pub devlog_count: f64,      // Devlog #whatever
 
-    // Counts
-    pub irregular_ellipsis: f64,   // bad ellipses (unicode ...)
-    pub rule_of_threes: f64,       // It's not just _, it's _ (i know this rule is not 3, but two)
-    pub devlog_day_count: f64,     // /(dev(-)?log|day)( \D+)?/gi
-    pub html_escapes: f64,         // &amp; etc
+    pub irregular_ellipsis: f64,   // bad ellipses
     pub irregular_quotations: f64, // Fancy quotation marks / total quotation marks
     pub irregular_dashes: f64,     // Em-dashes / total dashes
+    pub irregular_markdown: f64,   // bad markdown syntax present
+
+    pub labels: f64,
+    pub hashtags: f64,
 }
 ```
 
-I then pipe them all into a KMeans model, train it a few (10 billion) times.
+I then piped them all into a KMeans model and trained it a few (10 billion)
+times.
+
+## Library
+
+You can run the latest pre-trained version of the model in your own projects
+like this
+
+```sh
+cargo add sonai # Summer of No AI
+```
+
+```rust
+use sonai::{predict, Prediction};
+
+fn main() {
+    let Prediction { chance_ai, chance_human } = predict("Hello, world!");
+
+    let chance_ai = chance_ai * 100;
+    let chance_human = chance_human * 100;
+
+    println!("{chance_ai}% ai, {chance_human}% human");
+}
+```
 
 ## DIY
 
-Place `JOURNEY=` in `.env` to fetch devlogs & projects, or use the provided
-`som.data` file.
+### Project-structure
 
-## WASM
+- `training-bin` Training, generates a model.kmeans and model.ai.cluster
+- `inference-lib"` Runs a model.kmeans and performs predictions
+- `inference-wasm` Like inference-lib, but wrapped with wasm-bindgen for JS use
+- `model`
+
+Place `JOURNEY=` in `training-bin/.env` to fetch devlogs & projects, or use the
+provided `training-bin/som.data` file.
+
+### Training
+
+To train the model, run the binary in `training-bin`
+
+```sh
+cd training-bin
+cargo r -r
+```
+
+### WASM
 
 For demo purposes, this crate has been ported to WASM and a static site where
 you can run the AI detection model on your own text. Compile the wasm demo
 yourself with:
 
 ```sh
-wasm-pack build --release -d demo/src/pkg
+cd inference-wasm
+wasm-pack build --release -d ../inference-wasm-web/src/pkg
 ```
 
 All the opt flags have been preconfigured in `Cargo.toml`
+
+#### License
+
+<sup>
+Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
+2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
+</sup>
+
+<br>
+
+<sub>
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
+</sub>

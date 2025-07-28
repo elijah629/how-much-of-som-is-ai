@@ -1,0 +1,29 @@
+[package]
+name = "training"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+model = { path = "../model" }
+
+linfa = { workspace = true }
+linfa-clustering = { workspace = true }
+linfa-nn = { workspace = true }
+ndarray = { workspace = true }
+
+bincode = { workspace = true }
+serde = { workspace = true }
+
+colored = "3.0.0" # Cluster display
+rand = "0.9.2"
+
+anyhow = "1.0.98"
+dotenvy = { git = "https://github.com/allan2/dotenvy", branch = "main" }
+
+# Embedding seems to degrade perf
+# embed_anything = { version = "0.6.4", features = ["cuda"] }
+# rand = "0.9.2"
+
+reqwest = { version = "0.12.22", features = ["http2", "json", "rustls-tls"], default-features = false }
+tokio = { version = "1.46.1", features = ["full"] }
+futures = "0.3.31"
