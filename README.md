@@ -1,7 +1,7 @@
 # how much of som is ai?
 
-I trained a ~~271~~ ~~250~~ 175 ✔️ byte AI Detection KMeans model on every SoM devlog. Here's how
-it went!
+I trained a ~~271~~ ~~250~~ 207 ✔️ byte AI Detection KMeans model on every SoM
+devlog. Here's how it went!
 
 ## How this version works
 
@@ -53,8 +53,8 @@ I then pipe them all into a KMeans model, train it a few (10 billion) times.
 
 ## DIY
 
-Place `JOURNEY=` in `.env` to fetch devlogs & projects, or use the provided `som.data`
-file.
+Place `JOURNEY=` in `.env` to fetch devlogs & projects, or use the provided
+`som.data` file.
 
 ## WASM
 
