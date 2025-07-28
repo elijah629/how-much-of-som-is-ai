@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
         .n_runs(10)
         .fit(&dataset)?;
 
-    fs::write("model.kmeans", encode_to_vec(&model, config)?).await?;
+    fs::write("../sonai/model.kmeans", encode_to_vec(&model, config)?).await?;
 
     println!("Predicting");
     let predicted: Array1<usize> = model.predict(&features);
@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
     let ai_label = if avg_emoji[0] > avg_emoji[1] { 0 } else { 1 };
     let human_label = if avg_emoji[0] > avg_emoji[1] { 1 } else { 0 };
 
-    fs::write("model.ai.cluster", [ai_label as u8]).await?;
+    fs::write("../sonai/model.ai.cluster", [ai_label as u8]).await?;
 
     let cluster_counts: [usize; 2] = predicted.iter().fold([0, 0], |mut counts, &label| {
         counts[label] += 1;

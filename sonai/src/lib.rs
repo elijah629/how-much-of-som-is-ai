@@ -2,18 +2,13 @@ use linfa_clustering::KMeans;
 use once_cell::sync::Lazy;
 use sonai_metrics::{TextMetrics, features_from_metrics, point_confidence};
 
-const AI_CLUSTER: usize = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../training-bin/model.ai.cluster"
-))[0] as usize;
+const AI_CLUSTER: usize =
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/model.ai.cluster"))[0] as usize;
 
 static MODEL: Lazy<KMeans<f64, linfa_nn::distance::L2Dist>> = Lazy::new(|| {
     let config = bincode::config::standard();
     bincode::serde::decode_from_slice(
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../training-bin/model.kmeans"
-        )),
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/model.kmeans")),
         config,
     )
     .unwrap()
