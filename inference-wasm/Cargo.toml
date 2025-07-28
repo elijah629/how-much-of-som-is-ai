@@ -1,10 +1,11 @@
 [package]
 name = "inference-wasm"
 version = "0.1.0"
+license = "MIT OR Apache-2.0"
 edition = "2024"
 
 [dependencies]
-sonai = { path = "../inference-lib" }
+sonai = { path = "../sonai" }
 getrandom = { version = "0.2.16", features = ["js"] }
 wasm-bindgen = "0.2.100"
 serde-wasm-bindgen = "0.6.5"

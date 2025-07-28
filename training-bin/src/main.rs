@@ -14,8 +14,8 @@ use tokio::fs;
 mod summer_of_making;
 
 use crate::summer_of_making::fetch_all;
-use model::TextMetrics;
-use model::features_from_metrics;
+use sonai_metrics::TextMetrics;
+use sonai_metrics::features_from_metrics;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

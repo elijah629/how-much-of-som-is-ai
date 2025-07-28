@@ -1,9 +1,10 @@
 [workspace]
 resolver = "3"
 members = [
-  "training-bin",   # Training, generates a model.kmeans and model.ai.cluster
-  "inference-lib",  # Runs a model.kmeans and performs predictions
-  "inference-wasm", "model", # Like inference-lib, but wrapped with wasm-bindgen for JS use
+   "training-bin",
+  "sonai",
+  "sonai-metrics",
+  "inference-wasm",
 ]
 
 [workspace.dependencies]

@@ -1,5 +1,5 @@
 import { predict } from "./pkg/inference_wasm";
-import './style.css'
+import "./style.css";
 
 const $input = document.getElementById("input") as HTMLTextAreaElement;
 const $output = document.getElementById("output") as HTMLPreElement;
