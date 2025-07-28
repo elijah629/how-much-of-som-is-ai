@@ -8,10 +8,10 @@ $input.addEventListener("input", () => {
   const input = $input.value;
   const { percent_human, percent_ai, ai, metrics } = predict(input);
 
-  $output.innerText = `AI = ${percent_human}%
-Human = ${percent_ai}%
+  $output.innerText = `Chance of AI = ${percent_human}%
+Chance of Human = ${percent_ai}%
 
-Text is ${ai ? "AI" : "Human"}
+Text is most likely ${ai ? "AI" : "Human"}
 
 ${JSON.stringify(metrics, (_, x) => x, 4)}`;
 });

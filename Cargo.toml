@@ -7,11 +7,10 @@ edition = "2024"
 linfa = { version = "0.7.1", default-features = false }
 linfa-clustering = { version = "0.7.1", features = ["serde"] }
 linfa-nn = "0.7.2"
-linfa-linalg = { version = "0.2.1", default-features = false, features = ["iterative", "rand"] }
 ndarray = { version = "0.15.6", default-features = false }
 
 emojis = "0.7.0"
-pulldown-cmark = { version = "0.13.0", default-features = false, features = ["simd"] }
+pulldown-cmark = { version = "0.13.0", default-features = false }
 unicode-segmentation = "1.12.0"
 
 bincode = { version = "2.0.1", features = ["serde"] }
@@ -20,6 +19,9 @@ linfa-preprocessing = "0.7.1"
 
 # For Training Only
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+colored = "3.0.0" # Cluster display
+rand = "0.9.2"
+
 anyhow = "1.0.98"
 dotenvy = { git = "https://github.com/allan2/dotenvy", branch = "main" }
 # Embedding seems to degrade perf
@@ -43,7 +45,8 @@ crate-type = ["cdylib", "rlib"]
 name = "hmosia"
 path = "src/main.rs"
 
-[profile.release]
+[profile.wasm]
+inherits = "release"
 lto = true
 opt-level = 3
 codegen-units = 1

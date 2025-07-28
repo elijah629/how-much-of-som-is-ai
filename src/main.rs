@@ -1,10 +1,14 @@
+use std::collections::HashMap;
+
 use bincode::config::standard;
 
 use bincode::serde::{decode_from_slice, encode_to_vec};
+use colored::Colorize;
 use linfa::Dataset;
 use linfa::traits::{Fit, Predict};
 use linfa_clustering::KMeans;
 use ndarray::{Array1, Array2};
+use rand::seq::IndexedRandom;
 use tokio::fs;
 
 use crate::metrics::TextMetrics;
@@ -74,8 +78,6 @@ async fn main() -> anyhow::Result<()> {
 
     fs::write("model.ai.cluster", [ai_label as u8]).await?;
 
-    println!("AI Cluster for model revision = {ai_label}");
-
     let cluster_counts: [usize; 2] = predicted.iter().fold([0, 0], |mut counts, &label| {
         counts[label] += 1;
         counts
@@ -85,24 +87,36 @@ async fn main() -> anyhow::Result<()> {
     let human = cluster_counts[human_label];
     let total = ai + human;
 
+    let mut clusters: HashMap<usize, Vec<(TextMetrics, String)>> = HashMap::new();
+
+    for ((label, metrics), devlog) in predicted.into_iter().zip(metrics).zip(data) {
+        clusters.entry(label).or_default().push((metrics, devlog));
+    }
+
+    let mut rng = rand::rng();
+
+    for (label, items) in clusters {
+        println!(
+            "\n{}",
+            format!("==================== Cluster {label} ====================")
+                .bold()
+                .cyan()
+        );
+
+        let sample = items.choose_multiple(&mut rng, 5);
+
+        for (i, (metrics, devlog)) in sample.into_iter().enumerate() {
+            println!("{}", format!("--- Sample {i} ---").bold().yellow());
+            println!("{} {}", "Features:".green(), metrics);
+            println!("{}\n{}", "Text:".blue(), devlog);
+            println!("{}", "-------------------------------\n".dimmed());
+        }
+    }
+
     println!(
-        "human={human}, ai={ai}, human%={}, ai%={}",
+        "ai_cluster={ai_label} human=({}%, {human}) ai=({}%, {ai})",
         human * 100 / total,
         ai * 100 / total
     );
-
-    let mut count = 0;
-    let mut other = 0;
-    for ((label, metrics), devlog) in predicted.into_iter().zip(metrics).zip(data).skip(7000) {
-        if label == 0 && count != 2 {
-            count += 1;
-        } else if label == 1 && other != 2 {
-            other += 1;
-        } else if (label == 0 && count == 2) || label == 1 && other == 2 {
-            continue;
-        }
-        println!("--{label}--\n {devlog}\n{metrics:?}");
-    }
-
     Ok(())
 }
