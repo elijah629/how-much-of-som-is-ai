@@ -62,6 +62,8 @@ cargo add sonai # Summer of No AI
 ```
 
 ```rust
+// This code works in WASM too!
+
 use sonai::{predict, Prediction};
 
 fn main() {
@@ -78,10 +80,11 @@ fn main() {
 
 ### Project-structure
 
-- `training-bin` Training, generates a model.kmeans and model.ai.cluster
-- `inference-lib"` Runs a model.kmeans and performs predictions
-- `inference-wasm` Like inference-lib, but wrapped with wasm-bindgen for JS use
-- `model`
+- `training-bin` Training, generates a model.kmeans and model.ai.cluster inside
+  the `sonai` crate.
+- `sonai"` Runs a model.kmeans and performs predictions. This can be installed
+  as a library in wasm and non-wasm environments.
+- `sonai-metrics` Helper lib to calculate text metrics
 
 Place `JOURNEY=` in `training-bin/.env` to fetch devlogs & projects, or use the
 provided `training-bin/som.data` file.
@@ -102,7 +105,7 @@ you can run the AI detection model on your own text. Compile the wasm demo
 yourself with:
 
 ```sh
-cd inference-wasm
+cd sonai
 wasm-pack build --release -d ../inference-wasm-web/src/pkg
 ```
 

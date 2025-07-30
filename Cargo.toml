@@ -1,10 +1,9 @@
 [workspace]
 resolver = "3"
 members = [
-   "training-bin",
+  "training-bin",
   "sonai",
   "sonai-metrics",
-  "inference-wasm",
 ]
 
 [workspace.dependencies]

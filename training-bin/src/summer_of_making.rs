@@ -1,4 +1,6 @@
-use anyhow::Result;
+use std::time::Duration;
+
+use anyhow::{Result, anyhow};
 use futures::{StreamExt, TryStreamExt};
 use reqwest::header::{COOKIE, HeaderMap, HeaderValue};
 use serde::Deserialize;
@@ -104,7 +106,7 @@ pub async fn pagintated_fetch<
         let url = format!("{api_url}?page={page}");
 
         async move {
-            let resp: T = client.get(&url).send().await?.json().await?;
+            let resp = fetch_page_with_retries::<T>(&client, &url, 3).await?;
             let resp = resp.page();
 
             println!("{api_url} {page}/{pages}");
@@ -119,6 +121,44 @@ pub async fn pagintated_fetch<
     }
 
     Ok(all_data)
+}
+
+async fn fetch_page_with_retries<T>(
+    client: &reqwest::Client,
+    url: &str,
+    max_retries: usize,
+) -> Result<T>
+where
+    T: for<'a> Deserialize<'a>,
+{
+    let mut attempt = 0;
+    loop {
+        match client.get(url).send().await {
+            Ok(resp) => match resp.json::<T>().await {
+                Ok(json) => return Ok(json),
+                Err(err) => {
+                    attempt += 1;
+                    if attempt >= max_retries {
+                        return Err(anyhow!(
+                            "JSON parse error after {max_retries} attempts: {err}"
+                        ));
+                    }
+                }
+            },
+            Err(err) => {
+                attempt += 1;
+                if attempt >= max_retries {
+                    return Err(anyhow!(
+                        "Request failed after {max_retries} attempts: {err}"
+                    ));
+                }
+            }
+        }
+
+        let delay = Duration::from_millis(500 * 2_u64.pow(attempt as u32 - 1));
+        println!("Retrying in {}ms", delay.as_millis());
+        tokio::time::sleep(delay).await;
+    }
 }
 
 pub async fn fetch_all(api_key: &str) -> Result<Vec<String>> {

@@ -22,7 +22,7 @@ pub struct Prediction {
     pub metrics: TextMetrics,
 }
 
-pub fn predict(devlog: &str) -> Prediction {
+fn _predict(devlog: &str) -> Prediction {
     let sample = TextMetrics::calculate(devlog);
     let features = features_from_metrics(&[&sample]);
     let features = features.row(0);
@@ -38,4 +38,18 @@ pub fn predict(devlog: &str) -> Prediction {
         chance_ai,
         chance_human,
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn predict(devlog: &str) -> Prediction {
+    _predict(devlog)
+}
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+pub fn predict(devlog: &str) -> JsValue {
+    serde_wasm_bindgen::to_value(&_predict(devlog)).unwrap()
 }

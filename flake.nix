@@ -28,6 +28,7 @@
 
             rustfmt
             pkg-config
+            openssl
 
             binaryen
           ];
