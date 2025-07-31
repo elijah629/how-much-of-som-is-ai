@@ -12,12 +12,15 @@ use unicode_segmentation::UnicodeSegmentation;
 #[derive(Debug, Serialize)]
 pub struct TextMetrics {
     // higher = more AI-like
-    pub emoji_rate: f64,    // Emoji * 2 / sentences
-    pub buzzword_rate: f64, // Buzzwords * 2 / sentences
+    pub emoji_rate: f64, // Emoji * 2 / sentences
 
-    pub not_just_count: f64,    // It's not just _, it's _
-    pub html_escape_count: f64, // &amp;
-    pub devlog_count: f64,      // Devlog #whatever
+    pub buzzword_count: f64,              // Buzzwords
+    pub not_just_count: f64,              // It's not just _, it's _
+    pub html_escape_count: f64,           // &amp;
+    pub devlog_count: f64,                // Devlog #whatever
+    pub backstory_count: f64,             // I built this for the people of America.
+    pub incorrect_perspective_count: f64, // We, they, you, etc
+    pub mr_fancy_pants: f64,              //I am quite profficient in English grammar!
 
     pub irregular_ellipsis: f64,   // bad ellipses
     pub irregular_quotations: f64, // Fancy quotation marks / total quotation marks
@@ -33,10 +36,10 @@ impl fmt::Display for TextMetrics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "emoji_rate={} not_just_count={} buzzword_rate={} html_escape_count={} devlog_count={} irregular_ellipsis={} irregular_quotations={} irregular_dashes={} irregular_markdown={} labels={} hashtags={}",
+            "emoji_rate={} not_just_count={} buzzword_count={} html_escape_count={} devlog_count={} irregular_ellipsis={} irregular_quotations={} irregular_dashes={} irregular_markdown={} labels={} hashtags={}",
             self.emoji_rate,
             self.not_just_count,
-            self.buzzword_rate,
+            self.buzzword_count,
             self.html_escape_count,
             self.devlog_count,
             self.irregular_ellipsis,
@@ -56,6 +59,9 @@ pub struct TextMetricFactory {
     not_just_ahocorasick: AhoCorasick,
     devlog_ahocorasick: AhoCorasick,
     irr_ell_ahocorasick: AhoCorasick,
+    backstory_ahocorasick: AhoCorasick,
+    incorrect_perspective_ahocorasick: AhoCorasick,
+    mr_fancy_pants_ahocorasick: AhoCorasick,
 }
 
 impl TextMetricFactory {
@@ -64,6 +70,9 @@ impl TextMetricFactory {
             buzzword_ahocorasick: AhoCorasick::new([
                 "the app",
                 "-powered",
+                "powered by",
+                "-based",
+                "based on",
                 "-like",
                 "todo app",
                 "interactive cards",
@@ -73,7 +82,6 @@ impl TextMetricFactory {
                 "across all devices",
                 "style and usability",
                 "real-time",
-                "this isn’t a prototype",
                 "calm, reflective space",
                 "simulate",
                 "self-care",
@@ -85,9 +93,6 @@ impl TextMetricFactory {
                 "auto-typing",
                 "engagement",
                 "community",
-                "it’s been a journey",
-                "it's been a journey",
-                "a journey",
                 "ambitious goal",
                 "world of data",
                 "programming toolkit",
@@ -97,18 +102,14 @@ impl TextMetricFactory {
                 "began to wonder",
                 "i'm announcing",
                 "i’m announcing",
-                "it’s all about",
-                "it's all about",
-                "leverage that knowledge",
                 "fully featured",
                 "next.js 13",
                 "next.js 14",
+                "next.js 13/14",
                 "svelte 4",
                 "app router",
                 "modern",
                 "web dashboard",
-                "the intention",
-                "(formerly",
                 "step-by-step",
                 "excited",
                 "tailwindcss",
@@ -133,16 +134,21 @@ impl TextMetricFactory {
                 "cross-platform",
                 "inspiration",
                 "technical architecture",
-                "this week was all about",
                 "users can",
                 "rewarding feel",
                 "progress tracking",
+                "understandable",
+                "digital co-pilot",
+                "significantly improves usability",
+                "easier to navigate",
             ])?,
             negative_buzzword_ahocorasick: AhoCorasick::new(["modern english"])?,
+            mr_fancy_pants_ahocorasick: AhoCorasick::new(["(e.g.", "(formerly"])?,
             not_just_ahocorasick: AhoCorasick::new([
                 "more than just",
                 "isn’t a",
                 "isn't a",
+                "this isn’t a prototype",
                 "isn’t just a",
                 "isn't just a",
                 "it’s not just",
@@ -153,6 +159,9 @@ impl TextMetricFactory {
                 "isn't just",
                 "didn't just",
                 "didn’t just",
+                "more than a",
+                "it’s more",
+                "it's more",
             ])?,
             devlog_ahocorasick: AhoCorasick::new([
                 "dev log",
@@ -162,8 +171,53 @@ impl TextMetricFactory {
                 "dev log #",
                 "dev-log #",
                 "day #",
+                "today,",
+                ", 2025",
+                "2025.",
+                "June ",
+                ".05",
+                ".06",
+                ".07",
+                "July ",
+                "key improvements",
+                "this week was all about",
+                "the project",
             ])?,
             irr_ell_ahocorasick: AhoCorasick::new(["…", "..."])?,
+            incorrect_perspective_ahocorasick: AhoCorasick::new([
+                "we",
+                "they",
+                "you",
+                "us",
+                "our",
+                "ours",
+                "ourselves",
+                "they",
+                "them",
+                "people",
+                "theirs",
+                "themselves",
+                "oneself",
+                "users",
+            ])?,
+            backstory_ahocorasick: AhoCorasick::new([
+                "as a",
+                "high school student",
+                "middle school student",
+                "preparing for",
+                "exams",
+                "was born from",
+                "personal frustration",
+                "makes it unique",
+                "and eventually",
+                "the intention",
+                "it’s been a journey",
+                "it's been a journey",
+                "a journey",
+                "it’s all about",
+                "it's all about",
+                "leverage that knowledge",
+            ])?,
         })
     }
 
@@ -283,9 +337,20 @@ impl TextMetricFactory {
 
         let not_just = self.not_just_ahocorasick.find_iter(&text).count();
 
+        let backstory = self.backstory_ahocorasick.find_iter(&text).count();
+        let incper = self
+            .incorrect_perspective_ahocorasick
+            .find_iter(&text)
+            .count();
+
+        let fancy = self.mr_fancy_pants_ahocorasick.find_iter(&text).count();
+
         TextMetrics {
             emoji_rate: (emoji_count * 2) as f64 / sc,
-            buzzword_rate: (buzzwords * 2) as f64 / sc,
+            buzzword_count: buzzwords as f64,
+            backstory_count: backstory as f64,
+            incorrect_perspective_count: incper as f64,
+            mr_fancy_pants: fancy as f64,
 
             devlog_count: dev_log as f64,
             html_escape_count: html_escapes as f64,
@@ -303,14 +368,14 @@ impl TextMetricFactory {
 }
 
 pub fn features_from_metrics(data: &[&TextMetrics]) -> Array2<f64> {
-    let n_features = 11;
+    let n_features = 14;
     let n_samples = data.len();
 
     let mut array = Array2::<f64>::zeros((n_samples, n_features));
 
     for (i, sample) in data.iter().enumerate() {
-        array[[i, 0]] = sample.emoji_rate;
-        array[[i, 1]] = sample.buzzword_rate;
+        array[[i, 0]] = sample.emoji_rate * 2.;
+        array[[i, 1]] = sample.buzzword_count * 10.;
         array[[i, 2]] = sample.irregular_dashes * 20.;
         array[[i, 3]] = sample.irregular_quotations * 5.;
         array[[i, 4]] = sample.labels;
@@ -320,6 +385,9 @@ pub fn features_from_metrics(data: &[&TextMetrics]) -> Array2<f64> {
         array[[i, 8]] = sample.devlog_count;
         array[[i, 9]] = sample.irregular_markdown;
         array[[i, 10]] = sample.hashtags;
+        array[[i, 11]] = sample.mr_fancy_pants;
+        array[[i, 12]] = sample.incorrect_perspective_count;
+        array[[i, 13]] = sample.backstory_count;
     }
 
     array

@@ -1408,7 +1408,7 @@ dependencies = [
 
 [[package]]
 name = "sonai"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "bincode",
  "getrandom 0.2.16",
@@ -1424,7 +1424,7 @@ dependencies = [
 
 [[package]]
 name = "sonai_metrics"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aho-corasick",
  "emojis",

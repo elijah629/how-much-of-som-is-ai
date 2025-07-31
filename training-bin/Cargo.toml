@@ -5,7 +5,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-sonai_metrics = "0.1.0"
+sonai_metrics = "0.2.0"
 
 linfa = { workspace = true }
 linfa-clustering = { workspace = true }
