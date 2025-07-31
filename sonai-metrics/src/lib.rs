@@ -36,18 +36,28 @@ impl fmt::Display for TextMetrics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "emoji_rate={} not_just_count={} buzzword_count={} html_escape_count={} devlog_count={} irregular_ellipsis={} irregular_quotations={} irregular_dashes={} irregular_markdown={} labels={} hashtags={}",
+            "emoji_rate\t\tnot_just_count\t\tbuzzword_count\t\thtml_escape_count
+          {}\t\t\t{}\t\t\t{}\t\t\t{}
+          irregular_ellipsis\tirregular_quotations\t\tirregular_dash\tirregular_markdown
+          {}\t\t\t{}\t\t\t\t{}\t\t{}
+          mr_fancy_pants\tincorrect_perspective_count\tdevlog_count\tlabels
+          {}\t\t\t{}\t\t\t\t{}\t\t{}
+          hashtags\t\tbackstory_count
+          {}\t\t\t{}",
             self.emoji_rate,
             self.not_just_count,
             self.buzzword_count,
             self.html_escape_count,
-            self.devlog_count,
             self.irregular_ellipsis,
             self.irregular_quotations,
             self.irregular_dashes,
             self.irregular_markdown,
+            self.mr_fancy_pants,
+            self.incorrect_perspective_count,
+            self.devlog_count,
             self.labels,
-            self.hashtags
+            self.hashtags,
+            self.backstory_count,
         )
     }
 }
@@ -141,6 +151,10 @@ impl TextMetricFactory {
                 "digital co-pilot",
                 "significantly improves usability",
                 "easier to navigate",
+                "react for the frontend",
+                "stylish",
+                "mobile-",
+                "ui/ux",
             ])?,
             negative_buzzword_ahocorasick: AhoCorasick::new(["modern english"])?,
             mr_fancy_pants_ahocorasick: AhoCorasick::new(["(e.g.", "(formerly"])?,
@@ -174,14 +188,18 @@ impl TextMetricFactory {
                 "today,",
                 ", 2025",
                 "2025.",
-                "June ",
+                "june ",
                 ".05",
                 ".06",
                 ".07",
-                "July ",
+                "july ",
                 "key improvements",
                 "this week was all about",
                 "the project",
+                "what’s next",
+                "what's next",
+                "next steps",
+                "why it matters",
             ])?,
             irr_ell_ahocorasick: AhoCorasick::new(["…", "..."])?,
             incorrect_perspective_ahocorasick: AhoCorasick::new([
@@ -346,8 +364,8 @@ impl TextMetricFactory {
         let fancy = self.mr_fancy_pants_ahocorasick.find_iter(&text).count();
 
         TextMetrics {
-            emoji_rate: (emoji_count * 2) as f64 / sc,
-            buzzword_count: buzzwords as f64,
+            emoji_rate: (emoji_count * 5) as f64 / sc,
+            buzzword_count: (buzzwords * 2) as f64 / sc,
             backstory_count: backstory as f64,
             incorrect_perspective_count: incper as f64,
             mr_fancy_pants: fancy as f64,

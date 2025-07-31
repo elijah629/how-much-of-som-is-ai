@@ -28,3 +28,4 @@ dotenvy = { git = "https://github.com/allan2/dotenvy", branch = "main" }
 reqwest = { version = "0.12.22", features = ["http2", "json", "rustls-tls"], default-features = false }
 tokio = { version = "1.46.1", features = ["full"] }
 futures = "0.3.31"
+rand_xoshiro = "0.6.0"

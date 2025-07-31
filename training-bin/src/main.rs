@@ -7,8 +7,11 @@ use colored::Colorize;
 use linfa::Dataset;
 use linfa::traits::{Fit, Predict};
 use linfa_clustering::KMeans;
+use linfa_nn::distance::LInfDist;
 use ndarray::{Array1, Array2};
 use rand::seq::IndexedRandom;
+use rand_xoshiro::Xoshiro256PlusPlus;
+use rand_xoshiro::rand_core::SeedableRng;
 use tokio::fs;
 
 mod summer_of_making;
@@ -45,8 +48,10 @@ async fn main() -> anyhow::Result<()> {
     println!("Building dataset");
     let dataset = Dataset::new(features.clone(), Array2::<f32>::zeros((metrics.len(), 0)));
 
+    let rng = Xoshiro256PlusPlus::seed_from_u64(69420);
+
     println!("Training");
-    let model: KMeans<f64, linfa_nn::distance::L2Dist> = KMeans::params(2)
+    let model: KMeans<f64, _> = KMeans::params_with(2, rng, LInfDist)
         .max_n_iterations(1000)
         .n_runs(10)
         .fit(&dataset)?;
