@@ -32,10 +32,10 @@ feature matrix. I calculate these features:
 ```rust
 struct TextMetrics {
     // higher = more AI-like
-    pub emoji_rate: f64, // Emoji / sentences
+    pub emoji_rate: f64, // Emoji * 2 / sentences
+    pub buzzword_rate: f64,    // Buzzwords * 2 / sentences
 
     pub not_just_count: f64,    // It's not just _, it's _
-    pub buzzword_count: f64,    // Buzzwords * 2 / words
     pub html_escape_count: f64, // &amp;
     pub devlog_count: f64,      // Devlog #whatever
 
@@ -104,12 +104,23 @@ For demo purposes, this crate has been ported to WASM and a static site where
 you can run the AI detection model on your own text. Compile the wasm demo
 yourself with:
 
+> [!NOTE]
+> wasm-pack & rustwasm has been deprecated, the old way is still here for legacy
+> reasons
+>
+> ```sh
+> cd sonai
+> wasm-pack build --release -d ../inference-wasm-web/src/pkg
+> ```
+>
+> All the opt flags have been preconfigured in `Cargo.toml`
+
 ```sh
 cd sonai
-wasm-pack build --release -d ../inference-wasm-web/src/pkg
+cargo build --release --target wasm32-unknown-unknown
+wasm-bindgen ../target/wasm32-unknown-unknown/release/sonai.wasm --out-dir ../inference-wasm-web/src/pkg --target bundler
+wasm-opt -O4 --strip-debug --enable-bulk-memory-opt -o ../inference-wasm-web/src/pkg/sonai_bg.wasm ../inference-wasm-web/src/pkg/sonai_bg.wasm
 ```
-
-All the opt flags have been preconfigured in `Cargo.toml`
 
 #### License
 

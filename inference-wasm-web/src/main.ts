@@ -1,4 +1,4 @@
-import { predict } from "./pkg/inference_wasm";
+import { predict } from "./pkg/sonai";
 import "./style.css";
 
 const $input = document.getElementById("input") as HTMLTextAreaElement;

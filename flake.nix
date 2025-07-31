@@ -21,7 +21,7 @@
             rustc
             cargo
 
-            wasm-pack
+            wasm-bindgen-cli
             lld
 
             twiggy

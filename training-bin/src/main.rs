@@ -14,8 +14,8 @@ use tokio::fs;
 mod summer_of_making;
 
 use crate::summer_of_making::fetch_all;
-use sonai_metrics::TextMetrics;
 use sonai_metrics::features_from_metrics;
+use sonai_metrics::{TextMetricFactory, TextMetrics};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     println!("Calculating metrics");
-    let metrics: Vec<TextMetrics> = data.iter().map(|x| TextMetrics::calculate(x)).collect();
+    let metrics: Vec<TextMetrics> = TextMetricFactory::new()?.calculate_iter(&data).collect();
     let metrics_refs: Vec<&TextMetrics> = metrics.iter().collect();
     let features = features_from_metrics(&metrics_refs);
 

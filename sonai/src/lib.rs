@@ -1,11 +1,12 @@
+use std::sync::LazyLock;
+
 use linfa_clustering::KMeans;
-use once_cell::sync::Lazy;
-use sonai_metrics::{TextMetrics, features_from_metrics, point_confidence};
+use sonai_metrics::{TextMetricFactory, TextMetrics, features_from_metrics, point_confidence};
 
 const AI_CLUSTER: usize =
     include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/model.ai.cluster"))[0] as usize;
 
-static MODEL: Lazy<KMeans<f64, linfa_nn::distance::L2Dist>> = Lazy::new(|| {
+static MODEL: LazyLock<KMeans<f64, linfa_nn::distance::L2Dist>> = LazyLock::new(|| {
     let config = bincode::config::standard();
     bincode::serde::decode_from_slice(
         include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/model.kmeans")),
@@ -15,6 +16,8 @@ static MODEL: Lazy<KMeans<f64, linfa_nn::distance::L2Dist>> = Lazy::new(|| {
     .0
 });
 
+static METRICS: LazyLock<TextMetricFactory> = LazyLock::new(|| TextMetricFactory::new().unwrap());
+
 #[derive(Debug, serde::Serialize)]
 pub struct Prediction {
     pub chance_ai: f64,
@@ -23,7 +26,7 @@ pub struct Prediction {
 }
 
 fn _predict(devlog: &str) -> Prediction {
-    let sample = TextMetrics::calculate(devlog);
+    let sample = METRICS.calculate(devlog);
     let features = features_from_metrics(&[&sample]);
     let features = features.row(0);
     let model = &*MODEL;
