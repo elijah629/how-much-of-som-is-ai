@@ -1,6 +1,6 @@
 # how much of som is ai?
 
-I trained a ~~271~~ ~~250~~ 207 ✔️ byte 11 parameter AI Detection KMeans model
+I trained a 255 ✔️ byte 14 parameter AI Detection KMeans model
 on every SoM devlog. Here's how it went!
 
 ## How this version works
