@@ -1,6 +1,6 @@
 [package]
 name = "sonai"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Generic AI Text Detection for rust"
@@ -12,7 +12,7 @@ linfa-clustering = { workspace = true }
 linfa-nn = { workspace = true }
 ndarray = { workspace = true }
 
-sonai_metrics = "0.2.1"
+sonai_metrics = "0.2.2"
 
 # Model loading
 serde = { workspace = true }
