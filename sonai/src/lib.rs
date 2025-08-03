@@ -1,12 +1,14 @@
 use std::sync::LazyLock;
 
 use linfa_clustering::KMeans;
-use sonai_metrics::{TextMetricFactory, TextMetrics, features_from_metrics, point_confidence};
+use sonai_metrics::{
+    DistanceFunction, TextMetricFactory, TextMetrics, features_from_metrics, point_confidence,
+};
 
 const AI_CLUSTER: usize =
     include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/model.ai.cluster"))[0] as usize;
 
-static MODEL: LazyLock<KMeans<f64, linfa_nn::distance::L2Dist>> = LazyLock::new(|| {
+static MODEL: LazyLock<KMeans<f64, DistanceFunction>> = LazyLock::new(|| {
     let config = bincode::config::standard();
     bincode::serde::decode_from_slice(
         include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/model.kmeans")),

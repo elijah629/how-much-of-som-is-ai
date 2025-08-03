@@ -33,7 +33,7 @@ feature matrix. I calculate these features:
 struct TextMetrics {
     // higher = more AI-like
     pub emoji_rate: f64, // Emoji * 2 / sentences
-    pub buzzword_count: f64,    // Buzzwords
+    pub buzzword_rate: f64,    // Buzzwords
 
     pub not_just_count: f64,    // It's not just _, it's _
     pub html_escape_count: f64, // &amp;

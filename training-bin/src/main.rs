@@ -7,7 +7,6 @@ use colored::Colorize;
 use linfa::Dataset;
 use linfa::traits::{Fit, Predict};
 use linfa_clustering::KMeans;
-use linfa_nn::distance::LInfDist;
 use ndarray::{Array1, Array2};
 use rand::seq::IndexedRandom;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -17,7 +16,7 @@ use tokio::fs;
 mod summer_of_making;
 
 use crate::summer_of_making::fetch_all;
-use sonai_metrics::features_from_metrics;
+use sonai_metrics::{DIST_FN, DistanceFunction, features_from_metrics};
 use sonai_metrics::{TextMetricFactory, TextMetrics};
 
 #[tokio::main]
@@ -51,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
     let rng = Xoshiro256PlusPlus::seed_from_u64(69420);
 
     println!("Training");
-    let model: KMeans<f64, _> = KMeans::params_with(2, rng, LInfDist)
+    let model: KMeans<f64, DistanceFunction> = KMeans::params_with(2, rng, DIST_FN)
         .max_n_iterations(1000)
         .n_runs(10)
         .fit(&dataset)?;

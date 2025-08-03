@@ -1,6 +1,7 @@
 use aho_corasick::AhoCorasick;
 use linfa_clustering::KMeans;
-use linfa_nn::distance::{Distance, L2Dist};
+use linfa_nn::distance::Distance;
+use linfa_nn::distance::LInfDist;
 use ndarray::{Array1, Array2, ArrayView1, Axis};
 use pulldown_cmark::Event;
 use pulldown_cmark::Parser;
@@ -9,12 +10,15 @@ use serde::Serialize;
 use std::fmt;
 use unicode_segmentation::UnicodeSegmentation;
 
+pub const DIST_FN: LInfDist = LInfDist;
+pub type DistanceFunction = LInfDist;
+
 #[derive(Debug, Serialize)]
 pub struct TextMetrics {
     // higher = more AI-like
-    pub emoji_rate: f64, // Emoji * 2 / sentences
-
-    pub buzzword_count: f64,              // Buzzwords
+    pub emoji_rate: f64,    // Emoji * 2 / sentences
+    pub buzzword_rate: f64, // Buzzwords
+    //
     pub not_just_count: f64,              // It's not just _, it's _
     pub html_escape_count: f64,           // &amp;
     pub devlog_count: f64,                // Devlog #whatever
@@ -34,31 +38,63 @@ pub struct TextMetrics {
 
 impl fmt::Display for TextMetrics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "emoji_rate\t\tnot_just_count\t\tbuzzword_count\t\thtml_escape_count
-          {}\t\t\t{}\t\t\t{}\t\t\t{}
-          irregular_ellipsis\tirregular_quotations\t\tirregular_dash\tirregular_markdown
-          {}\t\t\t{}\t\t\t\t{}\t\t{}
-          mr_fancy_pants\tincorrect_perspective_count\tdevlog_count\tlabels
-          {}\t\t\t{}\t\t\t\t{}\t\t{}
-          hashtags\t\tbackstory_count
-          {}\t\t\t{}",
-            self.emoji_rate,
-            self.not_just_count,
-            self.buzzword_count,
-            self.html_escape_count,
-            self.irregular_ellipsis,
-            self.irregular_quotations,
-            self.irregular_dashes,
-            self.irregular_markdown,
-            self.mr_fancy_pants,
-            self.incorrect_perspective_count,
-            self.devlog_count,
-            self.labels,
-            self.hashtags,
-            self.backstory_count,
-        )
+        const COLUMNS: u8 = 2u8;
+
+        let metrics = &[
+            ("emoji", self.emoji_rate),
+            ("not_just", self.not_just_count),
+            ("buzzword", self.buzzword_rate),
+            ("html", self.html_escape_count),
+            ("irr_ell", self.irregular_ellipsis),
+            ("irr_quote", self.irregular_quotations),
+            ("irr_dash", self.irregular_dashes),
+            ("irr_md", self.irregular_markdown),
+            ("fancy", self.mr_fancy_pants),
+            ("bad_per", self.incorrect_perspective_count),
+            ("devlog", self.devlog_count),
+            ("labels", self.labels),
+            ("hashtags", self.hashtags),
+            ("backstory", self.backstory_count),
+        ];
+
+        let mut cell = 0u8;
+
+        for &(metric, value) in metrics {
+            if value == 0. {
+                continue;
+            }
+
+            let row = cell / COLUMNS;
+            let col = cell % COLUMNS;
+
+            match (row, col) {
+                (0, 0) => {
+                    write!(f, "{metric:<10}")?;
+                }
+                (_, 0) => {
+                    write!(f, "          {metric:<10}")?;
+                }
+                (_, _) => {
+                    write!(f, "\t\t{metric:<10}")?;
+                }
+            }
+
+            let fractional = value.fract() != 0.;
+
+            if fractional {
+                write!(f, "{value:.1}")?;
+            } else {
+                write!(f, "{value}")?;
+            }
+
+            if col + 1 == COLUMNS {
+                writeln!(f)?;
+            }
+
+            cell += 1;
+        }
+
+        Ok(())
     }
 }
 
@@ -81,7 +117,6 @@ impl TextMetricFactory {
                 "the app",
                 "-powered",
                 "powered by",
-                "-based",
                 "based on",
                 "-like",
                 "todo app",
@@ -122,7 +157,6 @@ impl TextMetricFactory {
                 "web dashboard",
                 "step-by-step",
                 "excited",
-                "tailwindcss",
                 "build this",
                 "inner workings",
                 "live code editor",
@@ -156,7 +190,7 @@ impl TextMetricFactory {
                 "mobile-",
                 "ui/ux",
             ])?,
-            negative_buzzword_ahocorasick: AhoCorasick::new(["modern english"])?,
+            negative_buzzword_ahocorasick: AhoCorasick::new(["modern english", "made the app"])?,
             mr_fancy_pants_ahocorasick: AhoCorasick::new(["(e.g.", "(formerly"])?,
             not_just_ahocorasick: AhoCorasick::new([
                 "more than just",
@@ -185,6 +219,7 @@ impl TextMetricFactory {
                 "dev log #",
                 "dev-log #",
                 "day #",
+                "first devlog",
                 "today,",
                 ", 2025",
                 "2025.",
@@ -203,20 +238,19 @@ impl TextMetricFactory {
             ])?,
             irr_ell_ahocorasick: AhoCorasick::new(["…", "..."])?,
             incorrect_perspective_ahocorasick: AhoCorasick::new([
-                "we",
-                "they",
-                "you",
-                "us",
-                "our",
-                "ours",
-                "ourselves",
-                "they",
-                "them",
-                "people",
-                "theirs",
-                "themselves",
-                "oneself",
-                "users",
+                " we ",
+                " they ",
+                " you ",
+                " us ",
+                " our ",
+                " ours ",
+                " ourselves ",
+                " them ",
+                " people ",
+                " theirs ",
+                " themselves ",
+                " oneself ",
+                " users ",
             ])?,
             backstory_ahocorasick: AhoCorasick::new([
                 "as a",
@@ -235,6 +269,16 @@ impl TextMetricFactory {
                 "it’s all about",
                 "it's all about",
                 "leverage that knowledge",
+                "dive into",
+                "become a versatile programmer",
+                "my adventure",
+                "foundational principles",
+                "how computers truly work",
+                "the world of data",
+                "an ambitious goal",
+                "excited to build",
+                "programming toolkit",
+                "summer of learning",
             ])?,
         })
     }
@@ -328,7 +372,8 @@ impl TextMetricFactory {
 
             while let Some(c) = iter.next() {
                 match c {
-                    '–' | '—' | '‒' | '―' => irr_dash += 1,
+                    '–' | '—' | '‒' | '―' | '⸻' | '⸺' | '−' | '﹘' | '－' | '‑' | '‐' | '᠆'
+                    | '־' | '֊' => irr_dash += 1,
                     '“' | '”' | '‘' | '’' => irr_quote += 1,
                     '-' => {
                         if iter.peek().is_some_and(|x| !x.is_whitespace()) {
@@ -365,7 +410,7 @@ impl TextMetricFactory {
 
         TextMetrics {
             emoji_rate: (emoji_count * 5) as f64 / sc,
-            buzzword_count: (buzzwords * 2) as f64 / sc,
+            buzzword_rate: (buzzwords * 2) as f64 / sc,
             backstory_count: backstory as f64,
             incorrect_perspective_count: incper as f64,
             mr_fancy_pants: fancy as f64,
@@ -393,7 +438,7 @@ pub fn features_from_metrics(data: &[&TextMetrics]) -> Array2<f64> {
 
     for (i, sample) in data.iter().enumerate() {
         array[[i, 0]] = sample.emoji_rate * 2.;
-        array[[i, 1]] = sample.buzzword_count * 10.;
+        array[[i, 1]] = sample.buzzword_rate * 10.;
         array[[i, 2]] = sample.irregular_dashes * 20.;
         array[[i, 3]] = sample.irregular_quotations * 5.;
         array[[i, 4]] = sample.labels;
@@ -411,24 +456,14 @@ pub fn features_from_metrics(data: &[&TextMetrics]) -> Array2<f64> {
     array
 }
 
-fn linaccel_ultrahypr(value: f64) -> f64 {
-    if value > 2. {
-        value * 10.
-    } else {
-        value * 10. * (value - 1.).powi(2)
-    }
-}
-
 pub fn point_confidence(
-    model: &KMeans<f64, L2Dist>,
+    model: &KMeans<f64, DistanceFunction>,
     observation: ArrayView1<f64>,
 ) -> (Array1<f64>, Array1<f64>) {
     let centroids = model.centroids();
-    let dist_fn = L2Dist;
-
     let distances = centroids
         .axis_iter(Axis(0))
-        .map(|centroid_row| dist_fn.distance(observation, centroid_row))
+        .map(|centroid_row| DIST_FN.distance(observation, centroid_row))
         .collect::<Array1<_>>();
 
     let mut sims = distances.mapv(|d| 1.0 / (1.0 + d));
