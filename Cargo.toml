@@ -15,8 +15,10 @@ ndarray = { version = "0.15.6", default-features = false }
 bincode = { version = "2.0.1", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 
+sonai_metrics = "0.2.3"
+
 [patch.crates-io]
-sonai_metrics = { path = "sonai-metrics" }
+sonai_metrics = { path = "./sonai-metrics" }
 
 [profile.release]
 lto = true

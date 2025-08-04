@@ -8,10 +8,25 @@ $input.addEventListener("input", () => {
   const input = $input.value;
   const { chance_ai, chance_human, metrics } = predict(input);
 
-  $output.innerText = `Chance of AI = ${chance_ai}%
-Chance of Human = ${chance_human}%
+  $output.innerText = `Text is most likely ${chance_ai >= chance_human ? "AI" : "Human"}
 
-Text is most likely ${chance_ai >= chance_human ? "AI" : "Human"}
+Chance:
+  AI    = ${chance_ai.toFixed(2)}%
+  Human = ${chance_human.toFixed(2)}%
 
-${JSON.stringify(metrics, (_, x) => x, 4)}`;
+Non-zero metrics:
+${display(metrics)}`;
 });
+
+function display(metrics: Record<string, number>): string {
+  const output = Object.entries(metrics)
+    .filter(([, value]) => value !== 0)
+    .sort(([, a], [, b]) => b - a)
+    .map(([key, value]) =>
+      Number.isInteger(value)
+        ? `  ${key}: ${value}`
+        : `  ${key}: ${value.toFixed(2)}`
+    );
+
+  return output.join("\n");
+}

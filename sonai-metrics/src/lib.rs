@@ -116,6 +116,7 @@ impl TextMetricFactory {
             buzzword_ahocorasick: AhoCorasick::new([
                 "the app",
                 "-powered",
+                "-melting",
                 "powered by",
                 "based on",
                 "-like",
@@ -164,6 +165,7 @@ impl TextMetricFactory {
                 "kicking off",
                 "lightweight",
                 "in the browser",
+                "morphism",
                 "morphisim",
                 "comprehensive",
                 "philosophy",
@@ -191,6 +193,18 @@ impl TextMetricFactory {
                 "ui/ux",
                 "the single solution",
                 "fully customizable",
+                "about to change everything",
+                "solved that problem",
+                "the same tech behind",
+                "lives in its own",
+                "is like a",
+                "kubernetes",
+                "orchestrated",
+                "microservices architecture",
+                "corporate jargon",
+                "✨", // This emoji sucks
+                "buttery-smooth",
+                "biggest competitor",
             ])?,
             negative_buzzword_ahocorasick: AhoCorasick::new(["modern english", "made the app"])?,
             mr_fancy_pants_ahocorasick: AhoCorasick::new(["(e.g.", "(formerly"])?,
@@ -252,12 +266,13 @@ impl TextMetricFactory {
                 "next steps",
                 "why it matters",
                 "more coming soon",
+                "what i built",
             ])?,
             irr_ell_ahocorasick: AhoCorasick::new(["…", "..."])?,
             incorrect_perspective_ahocorasick: AhoCorasick::new([
+                " we're ",
                 " we ",
-                " they ",
-                " you ",
+                " they're ",
                 " us ",
                 " our ",
                 " ours ",
@@ -267,7 +282,6 @@ impl TextMetricFactory {
                 " theirs ",
                 " themselves ",
                 " oneself ",
-                " users ",
             ])?,
             backstory_ahocorasick: AhoCorasick::new([
                 "as a",
@@ -296,6 +310,9 @@ impl TextMetricFactory {
                 "excited to build",
                 "programming toolkit",
                 "summer of learning",
+                "something insane",
+                "think of it like",
+                "drowning in",
             ])?,
         })
     }
@@ -314,8 +331,7 @@ impl TextMetricFactory {
             .filter(|event| {
                 matches!(
                     event,
-                    Event::Code(_)
-                        | Event::InlineMath(_)
+                    Event::InlineMath(_)
                         | Event::DisplayMath(_)
                         | Event::Html(_)
                         | Event::FootnoteReference(_)
@@ -340,24 +356,13 @@ impl TextMetricFactory {
             .count()
             + text.matches('•').count(); // Lists are OK, this shit is not
 
-        let text = text.to_ascii_lowercase();
+        let text = text.to_ascii_lowercase().trim().replace("\n\n", "\n");
 
-        // split sentences
-        let sentence_splits: Vec<&str> = text
-            .split(|c| ".!?".contains(c))
+        let sentence_count = text
+            .split(['.', '!', '?', '\n'])
             .filter(|s| !s.trim().is_empty())
-            .collect();
-
-        let sentence_count = sentence_splits.len().max(1);
-
-        let words = text.split_whitespace().filter(|w| !w.is_empty());
-
-        let mut hashtags = 0usize;
-        for word in words {
-            if word.starts_with('#') && word.len() > 1 {
-                hashtags += 1;
-            }
-        }
+            .count()
+            .max(1);
 
         let mut labels = 0usize;
 
@@ -375,6 +380,17 @@ impl TextMetricFactory {
             }
         }
 
+        let text = text.replace("\n", " ").replace("  ", " ");
+
+        let words = text.split_whitespace().filter(|w| !w.trim().is_empty());
+
+        let mut hashtags = 0usize;
+        for word in words {
+            if word.starts_with('#') && word.len() > 1 {
+                hashtags += 1;
+            }
+        }
+
         let mut emoji_count = 0;
         let mut irr_dash = 0;
         let mut irr_quote = 0;
@@ -389,8 +405,11 @@ impl TextMetricFactory {
 
             while let Some(c) = iter.next() {
                 match c {
+                    // not just dashes, but all odd unicode symbols that AIs use often
+                    // TOOD: move this to a seperate irr_arrow etc metric
                     '–' | '—' | '‒' | '―' | '⸻' | '⸺' | '−' | '﹘' | '－' | '‑' | '‐' | '᠆'
-                    | '־' | '֊' => irr_dash += 1,
+                    | '־' | '֊' | '→' | '↑' | '↓' | '↔' | '↕' | '⇒' | '⇐' | '⇑' | '⇓' | '➔'
+                    | '➜' => irr_dash += 1,
                     '“' | '”' | '‘' | '’' => irr_quote += 1,
                     '-' => {
                         if iter.peek().is_some_and(|x| !x.is_whitespace()) {
