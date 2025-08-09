@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 use aho_corasick::AhoCorasick;
 use linfa_clustering::KMeans;
 use linfa_nn::distance::Distance;
@@ -30,6 +32,7 @@ pub struct TextMetrics {
     pub irregular_quotations: f64, // Fancy quotation marks / total quotation marks
     pub irregular_dashes: f64,     // Em-dashes / total dashes
     pub irregular_markdown: f64,   // bad markdown syntax present
+    pub irregular_arrows: f64,     // -> but the non hyphen-minus greater than version
 
     //pub i_speak_of_the_english: f64, // Bad english
     pub labels: f64,
@@ -48,6 +51,7 @@ impl fmt::Display for TextMetrics {
             ("irr_ell", self.irregular_ellipsis),
             ("irr_quote", self.irregular_quotations),
             ("irr_dash", self.irregular_dashes),
+            ("irr_arr", self.irregular_arrows),
             ("irr_md", self.irregular_markdown),
             ("fancy", self.mr_fancy_pants),
             ("bad_per", self.incorrect_perspective_count),
@@ -165,8 +169,8 @@ impl TextMetricFactory {
                 "kicking off",
                 "lightweight",
                 "in the browser",
+                "brutalism",
                 "morphism",
-                "morphisim",
                 "comprehensive",
                 "philosophy",
                 "revolutionary",
@@ -205,6 +209,7 @@ impl TextMetricFactory {
                 "✨", // This emoji sucks
                 "buttery-smooth",
                 "biggest competitor",
+                "it lets you",
             ])?,
             negative_buzzword_ahocorasick: AhoCorasick::new(["modern english", "made the app"])?,
             mr_fancy_pants_ahocorasick: AhoCorasick::new(["(e.g.", "(formerly"])?,
@@ -313,6 +318,8 @@ impl TextMetricFactory {
                 "something insane",
                 "think of it like",
                 "drowning in",
+                "last week",
+                "next week",
             ])?,
         })
     }
@@ -394,6 +401,7 @@ impl TextMetricFactory {
         let mut emoji_count = 0;
         let mut irr_dash = 0;
         let mut irr_quote = 0;
+        let mut irr_arr = 0;
 
         for grapheme in text.graphemes(true) {
             if emojis::get(grapheme).is_some() {
@@ -405,11 +413,11 @@ impl TextMetricFactory {
 
             while let Some(c) = iter.next() {
                 match c {
-                    // not just dashes, but all odd unicode symbols that AIs use often
-                    // TOOD: move this to a seperate irr_arrow etc metric
                     '–' | '—' | '‒' | '―' | '⸻' | '⸺' | '−' | '﹘' | '－' | '‑' | '‐' | '᠆'
-                    | '־' | '֊' | '→' | '↑' | '↓' | '↔' | '↕' | '⇒' | '⇐' | '⇑' | '⇓' | '➔'
-                    | '➜' => irr_dash += 1,
+                    | '־' | '֊' => irr_dash += 1,
+                    '→' | '↑' | '↓' | '↔' | '↕' | '⇒' | '⇐' | '⇑' | '⇓' | '➔' | '➜' => {
+                        irr_arr += 1
+                    }
                     '“' | '”' | '‘' | '’' => irr_quote += 1,
                     '-' => {
                         if iter.peek().is_some_and(|x| !x.is_whitespace()) {
@@ -457,6 +465,7 @@ impl TextMetricFactory {
 
             irregular_quotations: irr_quote as f64,
             irregular_dashes: irr_dash as f64,
+            irregular_arrows: irr_arr as f64,
             irregular_ellipsis: irr_ell as f64,
             irregular_markdown: markdown as f64,
 
@@ -467,7 +476,7 @@ impl TextMetricFactory {
 }
 
 pub fn features_from_metrics(data: &[&TextMetrics]) -> Array2<f64> {
-    let n_features = 14;
+    let n_features = 15;
     let n_samples = data.len();
 
     let mut array = Array2::<f64>::zeros((n_samples, n_features));
@@ -487,6 +496,7 @@ pub fn features_from_metrics(data: &[&TextMetrics]) -> Array2<f64> {
         array[[i, 11]] = sample.mr_fancy_pants;
         array[[i, 12]] = sample.incorrect_perspective_count;
         array[[i, 13]] = sample.backstory_count;
+        array[[i, 14]] = sample.irregular_arrows * 20.;
     }
 
     array

@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 use std::sync::LazyLock;
 
 use linfa_clustering::KMeans;
